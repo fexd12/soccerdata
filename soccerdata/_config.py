@@ -6,6 +6,7 @@ import logging.config
 import os
 import sys
 from pathlib import Path
+from typing import Dict
 
 from rich.logging import RichHandler
 
@@ -76,7 +77,7 @@ logger = logging.getLogger("root")
 logger.handlers[0] = RichHandler(markup=True)
 
 # Team name replacements
-TEAMNAME_REPLACEMENTS = {}
+TEAMNAME_REPLACEMENTS: Dict[str, str] = {}
 _f_custom_teamnname_replacements = CONFIG_DIR / "teamname_replacements.json"
 if _f_custom_teamnname_replacements.is_file():
     with _f_custom_teamnname_replacements.open(encoding="utf8") as json_file:
@@ -101,7 +102,6 @@ LEAGUE_DICT = {
         "MatchHistory": "E0",
         "FiveThirtyEight": "premier-league",
         "FBref": "Premier League",
-        "FotMob": "ENG-Premier League",
         "ESPN": "eng.1",
         "Sofascore": "Premier League",
         "SoFIFA": "[England] Premier League",
@@ -115,7 +115,6 @@ LEAGUE_DICT = {
         "MatchHistory": "SP1",
         "FiveThirtyEight": "la-liga",
         "FBref": "La Liga",
-        "FotMob": "ESP-LaLiga",
         "ESPN": "esp.1",
         "Sofascore": "LaLiga",
         "SoFIFA": "[Spain] La Liga",
@@ -129,7 +128,6 @@ LEAGUE_DICT = {
         "MatchHistory": "I1",
         "FiveThirtyEight": "serie-a",
         "FBref": "Serie A",
-        "FotMob": "ITA-Serie A",
         "ESPN": "ita.1",
         "Sofascore": "Serie A",
         "SoFIFA": "[Italy] Serie A",
@@ -143,7 +141,6 @@ LEAGUE_DICT = {
         "MatchHistory": "D1",
         "FiveThirtyEight": "bundesliga",
         "FBref": "Fußball-Bundesliga",
-        "FotMob": "GER-Bundesliga",
         "ESPN": "ger.1",
         "Sofascore": "Bundesliga",
         "SoFIFA": "[Germany] Bundesliga",
@@ -157,7 +154,6 @@ LEAGUE_DICT = {
         "MatchHistory": "F1",
         "FiveThirtyEight": "ligue-1",
         "FBref": "Ligue 1",
-        "FotMob": "FRA-Ligue 1",
         "ESPN": "fra.1",
         "Sofascore": "Ligue 1",
         "SoFIFA": "[France] Ligue 1",
@@ -168,13 +164,11 @@ LEAGUE_DICT = {
     },
     "INT-World Cup": {
         "FBref": "FIFA World Cup",
-        "FotMob": "INT-World Cup",
         "WhoScored": "International - FIFA World Cup",
         "season_code": "single-year",
     },
     "INT-European Championship": {
         "FBref": "UEFA European Football Championship",
-        "FotMob": "INT-EURO",
         "Sofascore": "EURO",
         "WhoScored": "International - European Championship",
         "season_start": "Jun",
@@ -183,7 +177,6 @@ LEAGUE_DICT = {
     },
     "INT-Women's World Cup": {
         "FBref": "FIFA Women's World Cup",
-        "FotMob": "INT-Women's World Cup",
         "WhoScored": "International - FIFA Women's World Cup",
         "season_code": "single-year",
     },

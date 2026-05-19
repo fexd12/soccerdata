@@ -11,8 +11,9 @@ import pandas as pd
 from lxml import html
 
 from ._common import (
-    BaseRequestsReader,
+    BaseSeleniumReader,
     add_standardized_team_name,
+    safe_xpath_text,
     standardize_colnames,
 )
 from ._config import DATA_DIR, NOCACHE, NOSTORE, TEAMNAME_REPLACEMENTS, logger
@@ -21,7 +22,7 @@ SO_FIFA_DATADIR = DATA_DIR / "SoFIFA"
 SO_FIFA_API = "https://sofifa.com"
 
 
-class SoFIFA(BaseRequestsReader):
+class SoFIFA(BaseSeleniumReader):
     """Provides pd.DataFrames from data at http://sofifa.com.
 
     Data will be downloaded as necessary and cached locally in
@@ -36,19 +37,12 @@ class SoFIFA(BaseRequestsReader):
         (e.g., 230034). Alternatively, the string "all" can be used to include all
         versions and "latest" to include the latest version only. Defaults to
         "latest".
-    proxy : 'tor' or dict or list(dict) or callable, optional
+    proxy : 'tor' or or dict or list(dict) or callable, optional
         Use a proxy to hide your IP address. Valid options are:
             - "tor": Uses the Tor network. Tor should be running in
               the background on port 9050.
-            - dict: A dictionary with the proxy to use. The dict should be
-              a mapping of supported protocols to proxy addresses. For example::
-
-                  {
-                      'http': 'http://10.10.1.10:3128',
-                      'https': 'http://10.10.1.10:1080',
-                  }
-
-            - list(dict): A list of proxies to choose from. A different proxy will
+            - str: The address of the proxy server to use.
+            - list(str): A list of proxies to choose from. A different proxy will
               be selected from this list after failed requests, allowing rotating
               proxies.
             - callable: A function that returns a valid proxy. This function will
@@ -59,18 +53,23 @@ class SoFIFA(BaseRequestsReader):
         If True, will not store downloaded data.
     data_dir : Path
         Path to directory where data will be cached.
+    path_to_browser : Path, optional
+        Path to the Chrome executable.
+    headless : bool, default: True
+        If True, will run Chrome in headless mode. Setting this to False might
+        help to avoid getting blocked. Only supported for Selenium <4.13.
     """
 
     def __init__(
         self,
         leagues: Optional[Union[str, list[str]]] = None,
         versions: Union[str, int, list[int]] = "latest",
-        proxy: Optional[
-            Union[str, dict[str, str], list[dict[str, str]], Callable[[], dict[str, str]]]
-        ] = None,
+        proxy: Optional[Union[str, list[str], Callable[[], str]]] = None,
         no_cache: bool = NOCACHE,
         no_store: bool = NOSTORE,
         data_dir: Path = SO_FIFA_DATADIR,
+        path_to_browser: Optional[Path] = None,
+        headless: bool = True,
     ):
         """Initialize SoFIFA reader."""
         super().__init__(
@@ -238,7 +237,7 @@ class SoFIFA(BaseRequestsReader):
         """
         # build url
         urlmask = SO_FIFA_API + "/team/{}/?r={}&set=true"
-        filemask = str(self.data_dir / "players_{}_{}.html")
+        filemask = "players_{}_{}.html"
 
         # get list of teams
         df_teams = self.read_teams()
@@ -361,7 +360,11 @@ class SoFIFA(BaseRequestsReader):
                         "league": lkey,
                         "team": node.xpath(".//td[2]//a")[0].text,
                         **{
-                            desc: node.xpath(f".//td[@data-col='{key}']//text()")[0]
+                            desc: safe_xpath_text(
+                                node,
+                                f".//td[@data-col='{key}']//text()",
+                                warn=f"Could not parse {desc} ({key}) stat.",
+                            )
                             for key, desc in ratings.items()
                         },
                         **version.to_dict(),
@@ -476,21 +479,36 @@ class SoFIFA(BaseRequestsReader):
                 **version.to_dict(),
             }
 
-        # Try each XPath until one returns a result
-        for s in score_labels:
-            value = None
-            xpaths = [
-                f"//p[.//text()[contains(.,'{s}')]]/span/em",
-                f"//div[contains(.,'{s}')]/em",
-                f"//li[not(self::script)][.//text()[contains(.,'{s}')]]/em",
-            ]
-            for xpath in xpaths:
-                nodes = tree.xpath(xpath)
-                if nodes:  # If at least one match is found
-                    value = nodes[0].text.strip()  # Take only the first match
-                    break  # Stop checking other XPaths once we find a valid value
+            # Try each XPath until one returns a result
+            for s in score_labels:
+                value = None
+                xpaths = [
+                    f"//p[.//text()[contains(.,'{s}')]]/span/em",
+                    f"//div[contains(.,'{s}')]/em",
+                    f"//li[not(self::script)][.//text()[contains(.,'{s}')]]/em",
+                ]
+                for xpath in xpaths:
+                    nodes = tree.xpath(xpath)
+                    if nodes:  # If at least one match is found
+                        value = nodes[0].text.strip()  # Take only the first match
+                        break  # Stop checking other XPaths once we find a valid value
 
-            scores[s] = value if value is not None else None  # Assign only once
-        ratings.append(scores)
+                scores[s] = value if value is not None else None  # Assign only once
+            ratings.append(scores)
+
         # return data frame
         return pd.DataFrame(ratings).pipe(standardize_colnames).set_index(["player"]).sort_index()
+
+    def _validate_page(self, url: str) -> str:
+        """Validate the page content.
+
+        For JSON API endpoints, return the page text so json.load works.
+        For HTML pages, use the base class logic to extract the body.
+        """
+        if "/api/" in url:
+            page_text = self._driver.execute_script("return document.body.innerText;")
+            if not page_text:
+                raise Exception("Empty response.")
+            return page_text
+
+        return super()._validate_page(url)

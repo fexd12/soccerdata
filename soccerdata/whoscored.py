@@ -14,6 +14,7 @@ from lxml import html
 from selenium.common.exceptions import (
     ElementClickInterceptedException,
     NoSuchElementException,
+    WebDriverException,
 )
 from selenium.webdriver.common.by import By
 
@@ -122,19 +123,12 @@ class WhoScored(BaseSeleniumReader):
     seasons : string, int or list, optional
         Seasons to include. Supports multiple formats.
         Examples: '16-17'; 2016; '2016-17'; [14, 15, 16]
-    proxy : 'tor' or dict or list(dict) or callable, optional
+    proxy : 'tor' or or dict or list(dict) or callable, optional
         Use a proxy to hide your IP address. Valid options are:
             - "tor": Uses the Tor network. Tor should be running in
               the background on port 9050.
-            - dict: A dictionary with the proxy to use. The dict should be
-              a mapping of supported protocols to proxy addresses. For example::
-
-                  {
-                      'http': 'http://10.10.1.10:3128',
-                      'https': 'http://10.10.1.10:1080',
-                  }
-
-            - list(dict): A list of proxies to choose from. A different proxy will
+            - str: The address of the proxy server to use.
+            - list(str): A list of proxies to choose from. A different proxy will
               be selected from this list after failed requests, allowing rotating
               proxies.
             - callable: A function that returns a valid proxy. This function will
@@ -156,9 +150,7 @@ class WhoScored(BaseSeleniumReader):
         self,
         leagues: Optional[Union[str, list[str]]] = None,
         seasons: Optional[Union[str, int, Iterable[Union[str, int]]]] = None,
-        proxy: Optional[
-            Union[str, dict[str, str], list[dict[str, str]], Callable[[], dict[str, str]]]
-        ] = None,
+        proxy: Optional[Union[str, list[str], Callable[[], str]]] = None,
         no_cache: bool = NOCACHE,
         no_store: bool = NOSTORE,
         data_dir: Path = WHOSCORED_DATADIR,
@@ -175,7 +167,7 @@ class WhoScored(BaseSeleniumReader):
             path_to_browser=path_to_browser,
             headless=headless,
         )
-        self.seasons = seasons  # type: ignore
+        self.seasons = seasons
         self.rate_limit = 5
         self.max_delay = 5
         if not self.no_store:
@@ -388,7 +380,9 @@ class WhoScored(BaseSeleniumReader):
             it = [(year, month) for year in mask for month in mask[year]]
             for i, (year, month) in enumerate(it):
                 filepath = self.data_dir / filemask_schedule.format(lkey, skey, stage_id, month)
-                url = WHOSCORED_URL + f"/tournaments/{stage_id}/data/?d={year}{(int(month)+1):02d}"
+                url = (
+                    WHOSCORED_URL + f"/tournaments/{stage_id}/data/?d={year}{(int(month) + 1):02d}"
+                )
 
                 if stage_name is not None:
                     logger.info(
@@ -710,7 +704,7 @@ class WhoScored(BaseSeleniumReader):
                     no_cache=live,
                 )
                 reader_value = reader.read()
-                if retry_missing and reader_value == b"null" or reader_value == b"":
+                if (retry_missing and reader_value == b"null") or reader_value == b"":
                     reader = self.get(
                         url,
                         filepath,
@@ -825,3 +819,27 @@ class WhoScored(BaseSeleniumReader):
             # with open("/tmp/error.html", "w") as f:
             # f.write(self._driver.page_source)
             raise ElementClickInterceptedException()
+
+    def _validate_page(self, url: str) -> str:
+        """Validate the page content.
+
+        Checks for the 'Incapsula incident ID' which indicates an IP block.
+
+        Parameters
+        ----------
+        url : str
+            The URL being downloaded.
+
+        Returns
+        -------
+        str
+            The validated page source.
+        """
+        page_html = self._driver.page_source
+        if "Incapsula incident ID" in page_html:
+            raise WebDriverException(
+                "Your IP is blocked. Use tor or a proxy to continue scraping."
+            )
+        if not page_html:
+            raise Exception("Empty response.")
+        return page_html

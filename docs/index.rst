@@ -20,19 +20,19 @@ Release v\ |release|. (``pip install soccerdata``)
 
 **SoccerData** is a collection of scrapers to gather soccer data from popular
 websites, including `Club Elo`_, `ESPN`_, `FBref`_, `FiveThirtyEight`_,
-`Football-Data.co.uk`_, `FotMob`_, `Sofascore`_, `SoFIFA`_, `Understat`_  and `WhoScored`_.
+`Football-Data.co.uk`_, `Sofascore`_, `SoFIFA`_, `Understat`_  and `WhoScored`_.
 
 .. code:: python
 
    import soccerdata as sd
 
-   # Create a scraper class instance for the 2018/19 Premier League
-   five38 = sd.FiveThirtyEight('ENG-Premier League', '1819')
+   # Create a scraper class instance for the 2020/21 Premier League
+   fbref = sd.FBref('ENG-Premier League', '2021')
 
    # Fetch data
-   games = five38.read_games()
-   forecasts = five38.read_forecasts()
-   clinches = five38.read_clinches()
+   games = fbref.read_schedule()
+   team_season_stats = fbref.read_team_season_stats(stat_type="passing")
+   player_season_stats = fbref.read_player_season_stats(stat_type="standard")
 
 
 -------------------
@@ -71,7 +71,6 @@ Do you like it? :doc:`Let's dive in! <intro>`
 .. _FBref: https://www.fbref.com/en/
 .. _FiveThirtyEight: https://fivethirtyeight.com/soccer-predictions/
 .. _Football-Data.co.uk: https://www.football-data.co.uk/
-.. _FotMob: https://fotmob.com/
 .. _Sofascore: https://www.sofascore.com/
 .. _SoFIFA: https://sofifa.com/
 .. _Understat: https://understat.com/
