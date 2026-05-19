@@ -5,7 +5,7 @@ import pytest
 from lxml import html
 
 import soccerdata as sd
-from soccerdata.fbref import FBref, _concat, _parse_table
+from soccerdata.fbref import FBref, FBrefPlayer, _concat, _parse_table
 
 
 def test_available_leagues() -> None:
@@ -247,3 +247,27 @@ def test_parse_table_player_ids():
     df = _parse_table(html_table)
     assert "player_id" in df.columns
     assert df["player_id"].tolist()[:2] == ["player123", "player456"]
+
+
+def test_read_player_profile():
+    fbref = FBrefPlayer()
+    profile = fbref.read_player_profile("c9e99e49")
+    assert profile["player_id"] == "c9e99e49"
+    assert profile["name"] == "Dani Alves"
+    assert profile["full_name"] == "Daniel Alves da Silva"
+
+
+def test_read_player_profile_no_name():
+    fbref = FBrefPlayer()
+    profile = fbref.read_player_profile("5f2caf8f")
+    assert profile["player_id"] == "5f2caf8f"
+    assert profile["name"] == "Tchê Tchê"
+    assert profile["full_name"] == "Tchê Tchê"
+
+
+def test_read_player_profile_no_thumb():
+    fbref = FBrefPlayer()
+    profile = fbref.read_player_profile("d8a7ba7a")
+    assert profile["player_id"] == "d8a7ba7a"
+    assert profile["name"] == "Alisson"
+    assert profile["full_name"] == "Alisson Machado dos Santos"

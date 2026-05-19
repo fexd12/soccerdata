@@ -35,6 +35,110 @@ BIG_FIVE_DICT = {
 }
 
 
+class FBrefPlayer(BaseSeleniumReader):
+    """Provides pd.DataFrames from data at http://fbref.com.
+
+    Data will be downloaded as necessary and cached locally in
+    ``~/soccerdata/data/FBref``.
+
+    Parameters
+    ----------
+    proxy : 'tor' or or dict or list(dict) or callable, optional
+        Use a proxy to hide your IP address. Valid options are:
+            - "tor": Uses the Tor network. Tor should be running in
+              the background on port 9050.
+            - str: The address of the proxy server to use.
+            - list(str): A list of proxies to choose from. A different proxy will
+              be selected from this list after failed requests, allowing rotating
+              proxies.
+            - callable: A function that returns a valid proxy. This function will
+              be called after failed requests, allowing rotating proxies.
+    no_cache : bool
+        If True, will not use cached data.
+    no_store : bool
+        If True, will not store downloaded data.
+    data_dir : Path
+        Path to directory where data will be cached.
+    path_to_browser : Path, optional
+        Path to the Chrome executable.
+    headless : bool, default: True
+        If True, will run Chrome in headless mode. Setting this to False might
+        help to avoid getting blocked. Only supported for Selenium <4.13.
+    """
+
+    def __init__(
+        self,
+        proxy: Optional[Union[str, list[str], Callable[[], str]]] = None,
+        no_cache: bool = NOCACHE,
+        no_store: bool = NOSTORE,
+        data_dir: Path = FBREF_DATADIR,
+        path_to_browser: Optional[Path] = None,
+        headless: bool = True,
+    ):
+        """Initialize FBref reader."""
+        super().__init__(
+            proxy=proxy,
+            no_cache=no_cache,
+            no_store=no_store,
+            data_dir=data_dir,
+            path_to_browser=path_to_browser,
+            headless=headless,
+            headers=FBREF_HEADERS,
+        )
+        self.rate_limit = 7
+        self.max_delay = 7
+
+    def read_player_profile(self, player_id: str) -> dict:
+        """Retrieve player profile information, including Full Name.
+
+        Parameters
+        ----------
+        player_id: str
+            The FBref player ID (e.g., 'e46012d4')
+
+        Returns
+        -------
+        dict
+        """
+        url = f"{FBREF_API}/en/players/{player_id}/"
+        filepath = self.data_dir / f"players_{player_id}.html"
+
+        try:
+            reader = self.get(url, filepath)
+            tree = html.parse(reader)
+        except Exception as e:
+            logger.error(f"Failed to fetch profile for {player_id}: {e}")
+            return {"player_id": player_id, "name": None, "full_name": None}
+
+        logger.info(f"tree: {tree.getroot()}")
+        profile = {"player_id": player_id, "name": None, "full_name": None}
+
+        node_no_thumb = tree.xpath("//*[@id='meta']/div[contains(@class,'nothumb')]")
+        logger.info(f"Node no thumb: {node_no_thumb}")
+
+        if len(node_no_thumb) >= 1:
+            name_node = tree.xpath("//div[@id='meta']//h1/span/text()")
+            profile["name"] = name_node[0] if name_node else None
+
+            full_name_node = tree.xpath("//*[@id='meta']/div[contains(@class,'nothumb')]/p[1]/strong/text()")
+            profile["full_name"] = full_name_node[0] if full_name_node else profile["name"]
+            return profile
+
+        name_node = tree.xpath("//div[@id='meta']//h1/span/text()")
+
+        if name_node:
+            profile["name"] = name_node[0]
+
+        full_name_raw = tree.xpath("//*[@id='meta']/div[2]/p[1]/strong/text()")
+
+        if full_name_raw and len(full_name_raw) == 1:
+            profile["full_name"] = full_name_raw[0]
+        else:
+            profile["full_name"] = profile["name"]
+
+        return profile
+
+
 class FBref(BaseSeleniumReader):
     """Provides pd.DataFrames from data at http://fbref.com.
 
