@@ -32,19 +32,12 @@ class ClubElo(BaseRequestsReader):
 
     Parameters
     ----------
-    proxy : 'tor' or dict or list(dict) or callable, optional
+    proxy : 'tor' or or dict or list(dict) or callable, optional
         Use a proxy to hide your IP address. Valid options are:
             - "tor": Uses the Tor network. Tor should be running in
               the background on port 9050.
-            - dict: A dictionary with the proxy to use. The dict should be
-              a mapping of supported protocols to proxy addresses. For example::
-
-                  {
-                      'http': 'http://10.10.1.10:3128',
-                      'https': 'http://10.10.1.10:1080',
-                  }
-
-            - list(dict): A list of proxies to choose from. A different proxy will
+            - str: The address of the proxy server to use.
+            - list(str): A list of proxies to choose from. A different proxy will
               be selected from this list after failed requests, allowing rotating
               proxies.
             - callable: A function that returns a valid proxy. This function will
@@ -59,9 +52,7 @@ class ClubElo(BaseRequestsReader):
 
     def __init__(
         self,
-        proxy: Optional[
-            Union[str, dict[str, str], list[dict[str, str]], Callable[[], dict[str, str]]]
-        ] = None,
+        proxy: Optional[Union[str, list[str], Callable[[], str]]] = None,
         no_cache: bool = NOCACHE,
         no_store: bool = NOSTORE,
         data_dir: Path = CLUB_ELO_DATADIR,
@@ -120,8 +111,8 @@ class ClubElo(BaseRequestsReader):
         )
 
     def read_team_history(
-        self, team: str, max_age: Union[int, timedelta] = 1
-    ) -> Optional[pd.DataFrame]:
+        self, team: str, max_age: Optional[Union[int, timedelta]] = 1
+    ) -> pd.DataFrame:
         """Retrieve full ELO history for one club.
 
         For the exact spelling of a club's name, check the result of
@@ -135,7 +126,8 @@ class ClubElo(BaseRequestsReader):
         team : str
             The club's name.
         max_age : int for age in days, or timedelta object
-            The max. age of locally cached file before re-download.
+            The max. age of locally cached file before re-download. To disable
+            re-downloading, set to None.
 
         Raises
         ------
@@ -153,7 +145,7 @@ class ClubElo(BaseRequestsReader):
 
         for _team in teams_to_check:
             filepath = self.data_dir / f"{_team}.csv"
-            url = f"{CLUB_ELO_API}/{_team}"
+            url = f"{CLUB_ELO_API}/{re.sub(r'[^a-zA-Z]', '', _team)}"
             data = self.get(url, filepath, max_age)
 
             df = (

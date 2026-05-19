@@ -29,19 +29,12 @@ class Sofascore(BaseRequestsReader):
     seasons : string, int or list, optional
         Seasons to include. Supports multiple formats.
         Examples: '16-17'; 2016; '2016-17'; [14, 15, 16]
-    proxy : 'tor' or dict or list(dict) or callable, optional
+    proxy : 'tor' or or dict or list(dict) or callable, optional
         Use a proxy to hide your IP address. Valid options are:
-            - 'tor': Uses the Tor network. Tor should be running in
+            - "tor": Uses the Tor network. Tor should be running in
               the background on port 9050.
-            - dict: A dictionary with the proxy to use. The dict should be
-              a mapping of supported protocols to proxy addresses. For example::
-
-                  {
-                      'http': 'http://10.10.1.10:3128',
-                      'https': 'http://10.10.1.10:1080',
-                  }
-
-            - list(dict): A list of proxies to choose from. A different proxy will
+            - str: The address of the proxy server to use.
+            - list(str): A list of proxies to choose from. A different proxy will
               be selected from this list after failed requests, allowing rotating
               proxies.
             - callable: A function that returns a valid proxy. This function will
@@ -58,9 +51,7 @@ class Sofascore(BaseRequestsReader):
         self,
         leagues: Optional[Union[str, list[str]]] = None,
         seasons: Optional[Union[str, int, Iterable[Union[str, int]]]] = None,
-        proxy: Optional[
-            Union[str, dict[str, str], list[dict[str, str]], Callable[[], dict[str, str]]]
-        ] = None,
+        proxy: Optional[Union[str, list[str], Callable[[], str]]] = None,
         no_cache: bool = NOCACHE,
         no_store: bool = NOSTORE,
         data_dir: Path = SOFASCORE_DATADIR,
@@ -73,7 +64,7 @@ class Sofascore(BaseRequestsReader):
             no_store=no_store,
             data_dir=data_dir,
         )
-        self.seasons = seasons  # type: ignore
+        self.seasons = seasons
         if not self.no_store:
             (self.data_dir / "leagues").mkdir(parents=True, exist_ok=True)
             (self.data_dir / "seasons").mkdir(parents=True, exist_ok=True)
@@ -86,7 +77,7 @@ class Sofascore(BaseRequestsReader):
         -------
         pd.DataFrame
         """
-        url = SOFASCORE_API + "config/unique-tournaments/EN/football"
+        url = SOFASCORE_API + "config/default-unique-tournaments/EN/football"
         filepath = self.data_dir / "leagues.json"
         reader = self.get(url, filepath)
         data = json.load(reader)
