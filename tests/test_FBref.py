@@ -57,7 +57,9 @@ def test_read_team_match_stats_alt_names(fbref_ligue1: FBref) -> None:
     )
     # Test with standardized team name
     assert isinstance(
-        fbref_ligue1.read_team_match_stats(stat_type="schedule", team="Olympique de Marseille"),
+        fbref_ligue1.read_team_match_stats(
+            stat_type="schedule", team="Olympique de Marseille"
+        ),
         pd.DataFrame,
     )
 
@@ -126,17 +128,29 @@ def test_read_lineup(fbref_ligue1: FBref) -> None:
 def test_concat() -> None:
     df1 = pd.DataFrame(
         columns=pd.MultiIndex.from_tuples(
-            [("Unnamed: a", "player"), ("Performance", "Goals"), ("Performance", "Assists")]
+            [
+                ("Unnamed: a", "player"),
+                ("Performance", "Goals"),
+                ("Performance", "Assists"),
+            ]
         )
     )
     df2 = pd.DataFrame(
         columns=pd.MultiIndex.from_tuples(
-            [("Unnamed: a", "player"), ("Unnamed: b", "Goals"), ("Performance", "Assists")]
+            [
+                ("Unnamed: a", "player"),
+                ("Unnamed: b", "Goals"),
+                ("Performance", "Assists"),
+            ]
         )
     )
     df3 = pd.DataFrame(
         columns=pd.MultiIndex.from_tuples(
-            [("Unnamed: a", "player"), ("Goals", "Unnamed: b"), ("Performance", "Assists")]
+            [
+                ("Unnamed: a", "player"),
+                ("Goals", "Unnamed: b"),
+                ("Performance", "Assists"),
+            ]
         )
     )
     res = _concat([df1, df2, df3], key=["player"])
@@ -186,8 +200,12 @@ def test_combine_big5() -> None:
 )
 def test_combine_big5_team_season_stats(fbref_ligue1: FBref, stat_type: str) -> None:
     fbref_bigfive = sd.FBref(["Big 5 European Leagues Combined"], 2021)
-    ligue1 = fbref_ligue1.read_team_season_stats(stat_type).loc["FRA-Ligue 1"].reset_index()
-    bigfive = fbref_bigfive.read_team_season_stats(stat_type).loc["FRA-Ligue 1"].reset_index()
+    ligue1 = (
+        fbref_ligue1.read_team_season_stats(stat_type).loc["FRA-Ligue 1"].reset_index()
+    )
+    bigfive = (
+        fbref_bigfive.read_team_season_stats(stat_type).loc["FRA-Ligue 1"].reset_index()
+    )
     cols = _concat([ligue1, bigfive], key=["season"]).columns
     ligue1.columns = cols
     bigfive.columns = cols
@@ -209,8 +227,16 @@ def test_combine_big5_team_season_stats(fbref_ligue1: FBref, stat_type: str) -> 
 )
 def test_combine_big5_player_season_stats(fbref_ligue1: FBref, stat_type: str) -> None:
     fbref_bigfive = sd.FBref(["Big 5 European Leagues Combined"], 2021)
-    ligue1 = fbref_ligue1.read_player_season_stats(stat_type).loc["FRA-Ligue 1"].reset_index()
-    bigfive = fbref_bigfive.read_player_season_stats(stat_type).loc["FRA-Ligue 1"].reset_index()
+    ligue1 = (
+        fbref_ligue1.read_player_season_stats(stat_type)
+        .loc["FRA-Ligue 1"]
+        .reset_index()
+    )
+    bigfive = (
+        fbref_bigfive.read_player_season_stats(stat_type)
+        .loc["FRA-Ligue 1"]
+        .reset_index()
+    )
     cols = _concat([ligue1, bigfive], key=["season"]).columns
     ligue1.columns = cols
     bigfive.columns = cols
@@ -271,3 +297,19 @@ def test_read_player_profile_no_thumb():
     assert profile["player_id"] == "d8a7ba7a"
     assert profile["name"] == "Alisson"
     assert profile["full_name"] == "Alisson Machado dos Santos"
+
+
+def test_read_player_profile_position_only():
+    """This test only player that dont have a full name on profile page"""
+
+    fbref = FBrefPlayer()
+    profile = fbref.read_player_profile("8226f0e2")
+    assert profile["player_id"] == "8226f0e2"
+    assert profile["name"] == "Cristian Manuel Chávez"
+    assert profile["full_name"] == "Cristian Manuel Chávez"
+
+    fbref = FBrefPlayer()
+    profile = fbref.read_player_profile("ec315772")
+    assert profile["player_id"] == "ec315772"
+    assert profile["name"] == "Santiago Pierotti"
+    assert profile["full_name"] == "Santiago Pierotti"

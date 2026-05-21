@@ -120,8 +120,8 @@ class FBrefPlayer(BaseSeleniumReader):
             name_node = tree.xpath("//div[@id='meta']//h1/span/text()")
             profile["name"] = name_node[0] if name_node else None
 
-            full_name_node = tree.xpath("//*[@id='meta']/div[contains(@class,'nothumb')]/p[1]/strong/text()")
-            profile["full_name"] = full_name_node[0] if full_name_node else profile["name"]
+            full_name_node = tree.xpath("//*[@id='meta']/div[contains(@class,'nothumb')]/p[1]/strong/text()")[0]
+            profile["full_name"] = full_name_node if full_name_node != 'Position:' else profile["name"]
             return profile
 
         name_node = tree.xpath("//div[@id='meta']//h1/span/text()")
@@ -131,7 +131,7 @@ class FBrefPlayer(BaseSeleniumReader):
 
         full_name_raw = tree.xpath("//*[@id='meta']/div[2]/p[1]/strong/text()")
 
-        if full_name_raw and len(full_name_raw) == 1:
+        if full_name_raw and len(full_name_raw) == 1 and full_name_raw[0] != 'Position:':
             profile["full_name"] = full_name_raw[0]
         else:
             profile["full_name"] = profile["name"]
